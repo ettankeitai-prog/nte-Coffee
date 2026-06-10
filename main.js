@@ -1,12 +1,17 @@
 // main.js
 import { MENUS, SKILLS } from './data.js';
-import { calculateRevenue } from './optimizer.js';
+import { calculateRevenue, findBestBuildFast } from './optimizer.js';
 
 const charSlotsContainer = document.getElementById('char-slots');
 const menuSlotsContainer = document.getElementById('menu-slots');
 const materialBox = document.getElementById('material-box');
 const totalRevenueEl = document.getElementById('total-revenue');
 const itemBreakdownEl = document.getElementById('item-breakdown');
+
+const btnOptimize = document.getElementById('btn-optimize');
+const btnExport = document.getElementById('btn-export');
+const btnImport = document.getElementById('btn-import');
+const saveDataCodeInput = document.getElementById('save-data-code');
 
 const charNames = [...new Set(SKILLS.map(s => s.character))];
 const allMaterials = [...new Set(MENUS.flatMap(m => m.materials || []))];
@@ -23,7 +28,6 @@ for (let i = 0; i < 10; i++) {
     select.innerHTML = `<option value="">-- 未配置 --</option>` + 
         charNames.map(name => `<option value="${name}">[従業員] ${name}</option>`).join('');
     
-    // 【修正点】能力枠の数値入力から、Lv1〜5を選択するセレクトボックスに変更
     const levelContainer = document.createElement('div');
     levelContainer.className = 'unlocked-container';
     levelContainer.innerHTML = `
@@ -76,7 +80,6 @@ function runCalculation() {
     const charSlots = charSlotsContainer.querySelectorAll('.slot');
     charSlots.forEach(slot => {
         const name = slot.querySelector('.char-select').value;
-        // 【修正点】セレクトボックスから選択されたレベル値を取得
         const level = parseInt(slot.querySelector('.char-level').value) || 5;
         if (name) {
             selectedCharacters.push({ name, level });
@@ -112,7 +115,6 @@ function runCalculation() {
     itemBreakdownEl.innerHTML = result.itemResults.map(item => {
         const originMenu = MENUS.find(m => m.name === item.name);
         const typeClass = originMenu ? originMenu.type : '';
-        
         return `
             <div class="item-card ${typeClass}">
                 <div class="item-card-name">${item.name}</div>
@@ -121,5 +123,97 @@ function runCalculation() {
         `;
     }).join('');
 }
+
+// --- ① 最適配置の自動計算 ---
+btnOptimize.addEventListener('click', () => {
+    const charSlots = charSlotsContainer.querySelectorAll('.slot');
+    const userCharacterStatus = charNames.map(name => {
+        let currentLevel = 5;
+        const slots = charSlotsContainer.querySelectorAll('.slot');
+        for (const slot of slots) {
+            if (slot.querySelector('.char-select').value === name) {
+                currentLevel = parseInt(slot.querySelector('.char-level').value);
+                break;
+            }
+        }
+        return { name, level: currentLevel };
+    });
+
+    const activeMaterialBuffs = [];
+    const checkboxes = materialBox.querySelectorAll('input[type="checkbox"]:checked');
+    checkboxes.forEach(cb => activeMaterialBuffs.push(cb.value));
+
+    // 最適化ロジックの呼び出し
+    const best = findBestBuildFast(MENUS, userCharacterStatus, activeMaterialBuffs);
+
+    // メニューの自動反映
+    const menuSelects = menuSlotsContainer.querySelectorAll('.menu-select');
+    best.menus.forEach((menu, index) => {
+        if (menuSelects[index]) menuSelects[index].value = menu.name;
+    });
+
+    // キャラクターの自動反映
+    const charSlotsElements = charSlotsContainer.querySelectorAll('.slot');
+    charSlotsElements.forEach(slot => slot.querySelector('.char-select').value = "");
+    
+    best.characters.forEach((char, index) => {
+        if (charSlotsElements[index]) {
+            const selectEl = charSlotsElements[index].querySelector('.char-select');
+            const levelEl = charSlotsElements[index].querySelector('.char-level');
+            selectEl.value = char.name;
+            levelEl.value = char.level;
+        }
+    });
+
+    runCalculation();
+    alert(`最強編成を自動配置しました！\n最高予測時給: ${best.revenue.toFixed(2)}/h`);
+});
+
+// --- ② エクスポート（コード作成） ---
+btnExport.addEventListener('click', () => {
+    // 画面の10個のスロットの状態（配置されているキャラ名とレベル）をそのまま保存する
+    const slots = charSlotsContainer.querySelectorAll('.slot');
+    const statusArray = [];
+    
+    slots.forEach(slot => {
+        const name = slot.querySelector('.char-select').value || "EMPTY";
+        const level = slot.querySelector('.char-level').value || "5";
+        statusArray.push(`${name}:${level}`);
+    });
+
+    const code = btoa(encodeURIComponent(statusArray.join(',')));
+    saveDataCodeInput.value = code;
+    saveDataCodeInput.select();
+    alert("現在の配置とレベルの保存コードを作成しました！コピーして保存してください。");
+});
+
+// --- ② インポート（コード読込） ---
+btnImport.addEventListener('click', () => {
+    const code = prompt("保存したコードをここに貼り付けてください：");
+    if (!code) return;
+    try {
+        const decoded = decodeURIComponent(atob(code));
+        const pairs = decoded.split(',');
+        
+        const slots = charSlotsContainer.querySelectorAll('.slot');
+        
+        // 10個のスロットの状態を完全復元する
+        pairs.forEach((pair, index) => {
+            if (index < 10 && slots[index]) {
+                const [name, level] = pair.split(':');
+                const selectEl = slots[index].querySelector('.char-select');
+                const levelEl = slots[index].querySelector('.char-level');
+                
+                selectEl.value = (name === "EMPTY") ? "" : name;
+                levelEl.value = level;
+            }
+        });
+
+        runCalculation();
+        alert("キャラクターの配置とレベル状況を復元しました！");
+    } catch (e) {
+        alert("正しい保存コードではありません。");
+    }
+});
 
 runCalculation();

@@ -5,56 +5,36 @@ export const BASE_CUSTOMERS = 2400;
 export const MENU_LIMIT = 5;
 export const CHARACTER_LIMIT = 10;
 
-/************************************************
- * 条件判定（ドリンク、デザート、主食、同じタグの個数）
- ************************************************/
 export function evaluateCondition(condition, counts) {
     if (!condition || condition === "") return true;
-
     const match = condition.match(/(drink|dessert|main|sameTag)\s*>=\s*(\d+)/);
     if (!match) return false;
-
     const key = match[1];
     const value = Number(match[2]);
-
     return (counts[key] || 0) >= value;
 }
 
-/************************************************
- * メニューの属性集計
- ************************************************/
 export function buildMenuStats(menuSet) {
     const stats = { drink: 0, dessert: 0, main: 0, sameTag: 0 };
     const tagCount = {};
-
     for (const menu of menuSet) {
         if (menu.type === "drink") stats.drink++;
         if (menu.type === "dessert") stats.dessert++;
         if (menu.type === "main") stats.main++;
-
         tagCount[menu.type] = (tagCount[menu.type] || 0) + 1;
     }
-
     stats.sameTag = Math.max(0, ...Object.values(tagCount));
     return stats;
 }
 
-/************************************************
- * 有効なスキルの取得 (Lv1〜Lv5、および none 除外対応)
- ************************************************/
 export function getActiveSkills(selectedCharacters, menuStats) {
     const activeSkills = [];
-
     for (const charInput of selectedCharacters) {
-        // 現在のキャラレベル以下のスキルをすべて抽出
         const charSkills = SKILLS.filter(
             skill => skill.character === charInput.name && skill.level <= charInput.level
         );
-
         for (const skill of charSkills) {
-            // 【修正点】時給に関係のない "none" スキルは完全にスルー（除外）する
             if (skill.type === "none") continue;
-
             if (evaluateCondition(skill.condition, menuStats)) {
                 activeSkills.push(skill);
             }
@@ -63,9 +43,6 @@ export function getActiveSkills(selectedCharacters, menuStats) {
     return activeSkills;
 }
 
-/************************************************
- * 時給・売上計算（メインロジック）
- ************************************************/
 export function calculateRevenue(menuSet, selectedCharacters, activeMaterialBuffs) {
     const menuStats = buildMenuStats(menuSet);
     const activeSkills = getActiveSkills(selectedCharacters, menuStats);
@@ -77,18 +54,10 @@ export function calculateRevenue(menuSet, selectedCharacters, activeMaterialBuff
 
     for (const skill of activeSkills) {
         switch (skill.type) {
-            case "fixed_price":
-                fixedPriceBonus += Number(skill.value);
-                break;
-            case "revenue_percent":
-                revenuePercent += Number(skill.value);
-                break;
-            case "customer_percent":
-                customerPercent += Number(skill.value);
-                break;
-            case "customer_flat":
-                customerFlat += Number(skill.value);
-                break;
+            case "fixed_price": fixedPriceBonus += Number(skill.value); break;
+            case "revenue_percent": revenuePercent += Number(skill.value); break;
+            case "customer_percent": customerPercent += Number(skill.value); break;
+            case "customer_flat": customerFlat += Number(skill.value); break;
         }
     }
 
@@ -104,7 +73,6 @@ export function calculateRevenue(menuSet, selectedCharacters, activeMaterialBuff
 
     for (const menu of menuSet) {
         let materialBonus = 0;
-
         const hasBuffMaterial = (menu.materials || []).some(
             material => activeMaterialBuffs.includes(material)
         );
@@ -120,23 +88,16 @@ export function calculateRevenue(menuSet, selectedCharacters, activeMaterialBuff
         itemRevenue = Math.round(itemRevenue * 100) / 100;
         totalRevenue += itemRevenue;
 
-        itemResults.push({
-            name: menu.name,
-            revenue: itemRevenue
-        });
+        itemResults.push({ name: menu.name, revenue: itemRevenue });
     }
 
     return {
         revenue: Math.round(totalRevenue * 100) / 100,
         itemResults,
-        activeSkills,
-        menuStats
+        activeSkills
     };
 }
 
-/************************************************
- * 組み合わせ生成
- * ************************************************/
 export function combinations(arr, k) {
     const result = [];
     function helper(start, current) {
@@ -152,4 +113,53 @@ export function combinations(arr, k) {
     }
     helper(0, []);
     return result;
+}
+
+/************************************************
+ * 【新機能】すべてのメニューとキャラから最高時給を叩き出すロジック
+ ************************************************/
+export function findBestBuildFast(allMenus, availableCharacters, activeMaterialBuffs) {
+    // 1. メニュー5品の組み合わせを作る（18C5 = 8,568通り）
+    const menuCombos = combinations(allMenus, 5);
+    
+    let maxRevenue = -1;
+    let bestMenuSet = [];
+    let bestCharSet = [];
+
+    // 2. メニューの組み合わせごとに、一番恩恵があるキャラを最大10人自動で選出してシミュレート
+    for (const menuSet of menuCombos) {
+        const menuStats = buildMenuStats(menuSet);
+        
+        // このメニュー編成において、キャラ単体がどれくらい時給に貢献するかを簡易評価
+        const charScores = availableCharacters.map(char => {
+            const mockSkills = getActiveSkills([char], menuStats);
+            let score = 0;
+            mockSkills.forEach(s => {
+                if (s.type === "fixed_price") score += s.value * 120; // 単価バフ評価
+                if (s.type === "customer_flat") score += s.value * 0.5; // 客数バフ評価
+                if (s.type === "revenue_percent") score += s.value * 700; // 割合バフ評価
+                if (s.type === "customer_percent") score += s.value * 700;
+            });
+            return { char, score };
+        });
+
+        // 貢献度が高い上位10人を抽出（10人以下なら全員）
+        charScores.sort((a, b) => b.score - a.score);
+        const topChars = charScores.slice(0, 10).map(x => x.char);
+
+        // 割り出した優秀なキャラたちで実際に売り上げを計算
+        const result = calculateRevenue(menuSet, topChars, activeMaterialBuffs);
+        
+        if (result.revenue > maxRevenue) {
+            maxRevenue = result.revenue;
+            bestMenuSet = menuSet;
+            bestCharSet = topChars;
+        }
+    }
+
+    return {
+        revenue: maxRevenue,
+        menus: bestMenuSet,
+        characters: bestCharSet
+    };
 }

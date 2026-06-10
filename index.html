@@ -39,6 +39,9 @@
             border-left: 4px solid var(--accent-color);
             padding-left: 8px;
             color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         /* グリッドレイアウト */
         .grid-container {
@@ -50,10 +53,6 @@
             padding: 15px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
-        }
-        /* 特殊対応：キャラクターは10枠なので2列になる */
-        .char-grid {
-            grid-template-columns: repeat(5, 1fr);
         }
         .slot {
             background: rgba(0, 0, 0, 0.2);
@@ -88,15 +87,6 @@
             font-size: 11px;
             color: var(--text-muted);
         }
-        .unlocked-input {
-            width: 40px;
-            background: #2d3243;
-            color: #fff;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 2px 4px;
-            text-align: center;
-        }
         /* 原材料バフ用エリア */
         .material-panel {
             background: var(--panel-bg);
@@ -124,16 +114,13 @@
         .material-label:hover {
             border-color: var(--accent-color);
         }
-        .material-label input {
-            cursor: pointer;
-        }
         /* 結果表示エリア */
         .result-panel {
             background: #2d3243;
             border: 2px solid var(--accent-color);
             border-radius: 8px;
             padding: 20px;
-            margin-top: 25px;
+            margin-bottom: 25px;
         }
         .total-revenue {
             font-size: 32px;
@@ -159,13 +146,65 @@
             border-left: 4px solid #4a5568;
             font-size: 13px;
         }
-        /* 属性ごとのカード色分け */
         .item-card.drink { border-left-color: #0ea5e9; }
         .item-card.dessert { border-left-color: #ec4899; }
         .item-card.main { border-left-color: #eab308; }
-        
         .item-card-name { font-weight: bold; margin-bottom: 4px; }
         .item-card-rev { color: #10b981; text-align: right; font-weight: bold; }
+
+        /* 新機能用のスタイル */
+        .btn-optimize {
+            display: block;
+            width: 100%;
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: background 0.2s;
+        }
+        .btn-optimize:hover {
+            background: #059669;
+        }
+        .save-panel {
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 25px;
+        }
+        .save-flex {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .save-input {
+            flex: 1;
+            background: #1a1c23;
+            color: var(--accent-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+        .btn-save {
+            background: #3b4256;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .btn-save:hover {
+            background: #4b526d;
+        }
     </style>
 </head>
 <body>
@@ -174,24 +213,34 @@
     <h1>SHOP STOPWATCH OPTIMIZER</h1>
 
     <div class="section-title">従業員スロット (最大10名)</div>
-    <div class="grid-container char-grid" id="char-slots">
-        </div>
+    <div class="grid-container" id="char-slots" style="grid-template-columns: repeat(5, 1fr);"></div>
 
     <div class="section-title">メニュー設定 (5品)</div>
-    <div class="grid-container" id="menu-slots">
-        </div>
+    <div class="grid-container" id="menu-slots" style="grid-template-columns: repeat(5, 1fr);"></div>
 
     <div class="section-title">発動中の原材料バフ</div>
     <div class="material-panel">
-        <div class="material-tags" id="material-box">
-            </div>
+        <div class="material-tags" id="material-box"></div>
     </div>
 
     <div class="result-panel">
         <div class="section-title" style="border-left-color: #10b981;">計算結果 (予測時給)</div>
         <div class="total-revenue" id="total-revenue">0.00<span>/h</span></div>
-        <div class="item-list" id="item-breakdown">
-            </div>
+        <div class="item-list" id="item-breakdown"></div>
+    </div>
+
+    <button class="btn-optimize" id="btn-optimize">⚡ 所持状況から最強の配置を自動計算する</button>
+
+    <div class="section-title">データの保存と読込 (インポート / エクスポート)</div>
+    <div class="save-panel">
+        <span style="font-size: 12px; color: var(--text-muted);">
+            現在画面で選ばれている「キャラ達のLv」を文字にして保存・復活できます。
+        </span>
+        <div class="save-flex">
+            <input type="text" id="save-data-code" class="save-input" readonly placeholder="ここに保存コードがでます">
+            <button class="btn-save" id="btn-export">コード作成</button>
+            <button class="btn-save" id="btn-import" style="background:#0ea5e9">読込適用</button>
+        </div>
     </div>
 </div>
 
