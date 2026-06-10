@@ -1,0 +1,8 @@
+character,level,type,value,condition
+
+ミント,1,fixed_price,0.12,
+ミント,2,fixed_price,0.18,
+
+海月,1,fixed_price,0.12,
+海月,2,customer_percent,0.01,drink>=2
+海月,3,customer_percent,0.015,drink>=2
