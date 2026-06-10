@@ -116,38 +116,35 @@ export function combinations(arr, k) {
 }
 
 /************************************************
- * 【新機能】すべてのメニューとキャラから最高時給を叩き出すロジック
- ************************************************/
-export function findBestBuildFast(allMenus, availableCharacters, activeMaterialBuffs) {
-    // 1. メニュー5品の組み合わせを作る（18C5 = 8,568通り）
+ * 所持キャラリストを元にした、爆速の最適化計算
+ * ************************************************/
+export function findBestBuildFast(allMenus, ownedCharacters, activeMaterialBuffs) {
     const menuCombos = combinations(allMenus, 5);
     
     let maxRevenue = -1;
     let bestMenuSet = [];
     let bestCharSet = [];
 
-    // 2. メニューの組み合わせごとに、一番恩恵があるキャラを最大10人自動で選出してシミュレート
     for (const menuSet of menuCombos) {
         const menuStats = buildMenuStats(menuSet);
         
-        // このメニュー編成において、キャラ単体がどれくらい時給に貢献するかを簡易評価
-        const charScores = availableCharacters.map(char => {
+        // 所持しているキャラクター達の貢献度をスコア化
+        const charScores = ownedCharacters.map(char => {
             const mockSkills = getActiveSkills([char], menuStats);
             let score = 0;
             mockSkills.forEach(s => {
-                if (s.type === "fixed_price") score += s.value * 120; // 単価バフ評価
-                if (s.type === "customer_flat") score += s.value * 0.5; // 客数バフ評価
-                if (s.type === "revenue_percent") score += s.value * 700; // 割合バフ評価
+                if (s.type === "fixed_price") score += s.value * 120;
+                if (s.type === "customer_flat") score += s.value * 0.5;
+                if (s.type === "revenue_percent") score += s.value * 700;
                 if (s.type === "customer_percent") score += s.value * 700;
             });
             return { char, score };
         });
 
-        // 貢献度が高い上位10人を抽出（10人以下なら全員）
+        // 貢献スコアの高い上位10人を自動ピック
         charScores.sort((a, b) => b.score - a.score);
         const topChars = charScores.slice(0, 10).map(x => x.char);
 
-        // 割り出した優秀なキャラたちで実際に売り上げを計算
         const result = calculateRevenue(menuSet, topChars, activeMaterialBuffs);
         
         if (result.revenue > maxRevenue) {

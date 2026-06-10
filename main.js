@@ -5,6 +5,8 @@ import { calculateRevenue, findBestBuildFast } from './optimizer.js';
 const charSlotsContainer = document.getElementById('char-slots');
 const menuSlotsContainer = document.getElementById('menu-slots');
 const materialBox = document.getElementById('material-box');
+const rosterBox = document.getElementById('roster-box');
+
 const totalRevenueEl = document.getElementById('total-revenue');
 const itemBreakdownEl = document.getElementById('item-breakdown');
 
@@ -18,7 +20,7 @@ const allMaterials = [...new Set(MENUS.flatMap(m => m.materials || []))];
 
 // --- 画面初期化処理 ---
 
-// 1. キャラ枠 (10スロット) の生成
+// 1. 店舗に配置する用のキャラスロット (10枠)
 for (let i = 0; i < 10; i++) {
     const slot = document.createElement('div');
     slot.className = 'slot';
@@ -26,7 +28,7 @@ for (let i = 0; i < 10; i++) {
     const select = document.createElement('select');
     select.className = 'char-select';
     select.innerHTML = `<option value="">-- 未配置 --</option>` + 
-        charNames.map(name => `<option value="${name}">[従業員] ${name}</option>`).join('');
+        charNames.map(name => `<option value="${name}">${name}</option>`).join('');
     
     const levelContainer = document.createElement('div');
     levelContainer.className = 'unlocked-container';
@@ -49,7 +51,7 @@ for (let i = 0; i < 10; i++) {
     charSlotsContainer.appendChild(slot);
 }
 
-// 2. メニュー枠 (5スロット) の生成
+// 2. 店舗に配置する用のメニュースロット (5枠)
 for (let i = 0; i < 5; i++) {
     const slot = document.createElement('div');
     slot.className = 'slot';
@@ -64,7 +66,7 @@ for (let i = 0; i < 5; i++) {
     menuSlotsContainer.appendChild(slot);
 }
 
-// 3. 原材料バフのチェックボックス生成
+// 3. 発動可能な原材料バフ一覧
 allMaterials.forEach(mat => {
     const label = document.createElement('label');
     label.className = 'material-label';
@@ -73,8 +75,39 @@ allMaterials.forEach(mat => {
     materialBox.appendChild(label);
 });
 
+// 4. ★新設★ 全キャラクター所持・育成状況の一覧
+charNames.forEach(name => {
+    const card = document.createElement('div');
+    card.className = 'roster-item owned'; // デフォルトは所持チェックON
+    card.innerHTML = `
+        <div class="roster-header">
+            <input type="checkbox" class="roster-own" checked>
+            <span>${name}</span>
+        </div>
+        <select class="roster-level" style="margin-bottom:0; padding:3px; font-size:12px;">
+            <option value="1">Lv 1</option>
+            <option value="2">Lv 2</option>
+            <option value="3">Lv 3</option>
+            <option value="4">Lv 4</option>
+            <option value="5" selected>Lv 5</option>
+        </select>
+    `;
 
-// --- リアルタイム計算処理 ---
+    // チェックボックス切り替えで見た目のスタイルを変更
+    const checkbox = card.querySelector('.roster-own');
+    checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+            card.classList.add('owned');
+        } else {
+            card.classList.remove('owned');
+        }
+    });
+
+    rosterBox.appendChild(card);
+});
+
+
+// --- リアルタイム売上計算処理 ---
 function runCalculation() {
     const selectedCharacters = [];
     const charSlots = charSlotsContainer.querySelectorAll('.slot');
@@ -109,7 +142,6 @@ function runCalculation() {
     }
 
     const result = calculateRevenue(selectedMenus, selectedCharacters, activeMaterialBuffs);
-
     totalRevenueEl.innerHTML = `${result.revenue.toFixed(2)}<span>/h</span>`;
 
     itemBreakdownEl.innerHTML = result.itemResults.map(item => {
@@ -126,36 +158,47 @@ function runCalculation() {
 
 // --- ① 最適配置の自動計算 ---
 btnOptimize.addEventListener('click', () => {
-    const charSlots = charSlotsContainer.querySelectorAll('.slot');
-    const userCharacterStatus = charNames.map(name => {
-        let currentLevel = 5;
-        const slots = charSlotsContainer.querySelectorAll('.slot');
-        for (const slot of slots) {
-            if (slot.querySelector('.char-select').value === name) {
-                currentLevel = parseInt(slot.querySelector('.char-level').value);
-                break;
-            }
+    // 画面一番下の「管理パネル」で所持チェックがついているキャラだけをリスト化
+    const ownedCharacters = [];
+    const rosterItems = rosterBox.querySelectorAll('.roster-item');
+    
+    rosterItems.forEach(item => {
+        const isOwned = item.querySelector('.roster-own').checked;
+        const name = item.querySelector('span').innerText;
+        const level = parseInt(item.querySelector('.roster-level').value) || 5;
+        
+        if (isOwned) {
+            ownedCharacters.push({ name, level });
         }
-        return { name, level: currentLevel };
     });
 
+    if (ownedCharacters.length === 0) {
+        alert("所持キャラクターに1人もチェックが入っていません！");
+        return;
+    }
+
+    // 発動中の原材料バフ
     const activeMaterialBuffs = [];
     const checkboxes = materialBox.querySelectorAll('input[type="checkbox"]:checked');
     checkboxes.forEach(cb => activeMaterialBuffs.push(cb.value));
 
-    // 最適化ロジックの呼び出し
-    const best = findBestBuildFast(MENUS, userCharacterStatus, activeMaterialBuffs);
+    // 計算開始
+    const best = findBestBuildFast(MENUS, ownedCharacters, activeMaterialBuffs);
 
-    // メニューの自動反映
+    // 1. 割り出された最強メニュー5品を上の配置スロットにセット
     const menuSelects = menuSlotsContainer.querySelectorAll('.menu-select');
     best.menus.forEach((menu, index) => {
         if (menuSelects[index]) menuSelects[index].value = menu.name;
     });
 
-    // キャラクターの自動反映
+    // 2. 上のキャラ配置スロットを一旦全員空にする
     const charSlotsElements = charSlotsContainer.querySelectorAll('.slot');
-    charSlotsElements.forEach(slot => slot.querySelector('.char-select').value = "");
+    charSlotsElements.forEach(slot => {
+        slot.querySelector('.char-select').value = "";
+        slot.querySelector('.char-level').value = "5";
+    });
     
+    // 3. ピックされた最強の従業員（最大10人）を順番に上スロットへ配置
     best.characters.forEach((char, index) => {
         if (charSlotsElements[index]) {
             const selectEl = charSlotsElements[index].querySelector('.char-select');
@@ -165,52 +208,62 @@ btnOptimize.addEventListener('click', () => {
         }
     });
 
+    // 表示更新
     runCalculation();
-    alert(`最強編成を自動配置しました！\n最高予測時給: ${best.revenue.toFixed(2)}/h`);
+    alert(`最強編成の自動セットが完了しました！\n最高予測時給: ${best.revenue.toFixed(2)}/h`);
 });
 
-// --- ② エクスポート（コード作成） ---
+// --- ② セーブ（エクスポート用コード作成） ---
 btnExport.addEventListener('click', () => {
-    // 画面の10個のスロットの状態（配置されているキャラ名とレベル）をそのまま保存する
-    const slots = charSlotsContainer.querySelectorAll('.slot');
+    // 全管理キャラの「所持状態(1か0):レベル」を一本の暗号文コードにする
+    const rosterItems = rosterBox.querySelectorAll('.roster-item');
     const statusArray = [];
-    
-    slots.forEach(slot => {
-        const name = slot.querySelector('.char-select').value || "EMPTY";
-        const level = slot.querySelector('.char-level').value || "5";
-        statusArray.push(`${name}:${level}`);
+
+    rosterItems.forEach(item => {
+        const isOwned = item.querySelector('.roster-own').checked ? "1" : "0";
+        const name = item.querySelector('span').innerText;
+        const level = item.querySelector('.roster-level').value;
+        statusArray.push(`${name}:${isOwned}:${level}`);
     });
 
     const code = btoa(encodeURIComponent(statusArray.join(',')));
     saveDataCodeInput.value = code;
     saveDataCodeInput.select();
-    alert("現在の配置とレベルの保存コードを作成しました！コピーして保存してください。");
+    alert("あなたのキャラクター所持状況をコード化しました！メモ帳などに保存してください。");
 });
 
-// --- ② インポート（コード読込） ---
+// --- ② ロード（インポートコード読込） ---
 btnImport.addEventListener('click', () => {
     const code = prompt("保存したコードをここに貼り付けてください：");
     if (!code) return;
     try {
         const decoded = decodeURIComponent(atob(code));
         const pairs = decoded.split(',');
-        
-        const slots = charSlotsContainer.querySelectorAll('.slot');
-        
-        // 10個のスロットの状態を完全復元する
-        pairs.forEach((pair, index) => {
-            if (index < 10 && slots[index]) {
-                const [name, level] = pair.split(':');
-                const selectEl = slots[index].querySelector('.char-select');
-                const levelEl = slots[index].querySelector('.char-level');
-                
-                selectEl.value = (name === "EMPTY") ? "" : name;
-                levelEl.value = level;
-            }
+        const rosterItems = rosterBox.querySelectorAll('.roster-item');
+
+        pairs.forEach(pair => {
+            const [name, isOwned, level] = pair.split(':');
+            
+            // 管理パネル内の該当キャラを探して状態を復元
+            rosterItems.forEach(item => {
+                if (item.querySelector('span').innerText === name) {
+                    const checkEl = item.querySelector('.roster-own');
+                    const levelEl = item.querySelector('.roster-level');
+                    
+                    checkEl.checked = (isOwned === "1");
+                    levelEl.value = level;
+
+                    if (checkEl.checked) {
+                        item.classList.add('owned');
+                    } else {
+                        item.classList.remove('owned');
+                    }
+                }
+            });
         });
 
         runCalculation();
-        alert("キャラクターの配置とレベル状況を復元しました！");
+        alert("全キャラクターの所持・レベル状況を完璧に復元しました！");
     } catch (e) {
         alert("正しい保存コードではありません。");
     }

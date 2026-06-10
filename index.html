@@ -43,7 +43,6 @@
             justify-content: space-between;
             align-items: center;
         }
-        /* グリッドレイアウト */
         .grid-container {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -87,7 +86,6 @@
             font-size: 11px;
             color: var(--text-muted);
         }
-        /* 原材料バフ用エリア */
         .material-panel {
             background: var(--panel-bg);
             padding: 15px;
@@ -114,7 +112,6 @@
         .material-label:hover {
             border-color: var(--accent-color);
         }
-        /* 結果表示エリア */
         .result-panel {
             background: #2d3243;
             border: 2px solid var(--accent-color);
@@ -152,7 +149,6 @@
         .item-card-name { font-weight: bold; margin-bottom: 4px; }
         .item-card-rev { color: #10b981; text-align: right; font-weight: bold; }
 
-        /* 新機能用のスタイル */
         .btn-optimize {
             display: block;
             width: 100%;
@@ -171,6 +167,39 @@
         .btn-optimize:hover {
             background: #059669;
         }
+        
+        /* 全キャラ管理リスト用の新スタイル */
+        .roster-panel {
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 25px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
+        }
+        .roster-item {
+            background: #2d3243;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .roster-item.owned {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+        .roster-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
         .save-panel {
             background: var(--panel-bg);
             padding: 15px;
@@ -212,10 +241,10 @@
 <div class="container">
     <h1>SHOP STOPWATCH OPTIMIZER</h1>
 
-    <div class="section-title">従業員スロット (最大10名)</div>
+    <div class="section-title">店舗配置 - 従業員スロット (最大10名)</div>
     <div class="grid-container" id="char-slots" style="grid-template-columns: repeat(5, 1fr);"></div>
 
-    <div class="section-title">メニュー設定 (5品)</div>
+    <div class="section-title">店舗配置 - メニュー設定 (5品)</div>
     <div class="grid-container" id="menu-slots" style="grid-template-columns: repeat(5, 1fr);"></div>
 
     <div class="section-title">発動中の原材料バフ</div>
@@ -224,17 +253,20 @@
     </div>
 
     <div class="result-panel">
-        <div class="section-title" style="border-left-color: #10b981;">計算結果 (予測時給)</div>
+        <div class="section-title" style="border-left-color: #10b981;">現在の店舗予測時給</div>
         <div class="total-revenue" id="total-revenue">0.00<span>/h</span></div>
         <div class="item-list" id="item-breakdown"></div>
     </div>
 
     <button class="btn-optimize" id="btn-optimize">⚡ 所持状況から最強の配置を自動計算する</button>
 
+    <div class="section-title">全キャラクター所持・育成管理 (最適化の計算元になります)</div>
+    <div class="roster-panel" id="roster-box"></div>
+
     <div class="section-title">データの保存と読込 (インポート / エクスポート)</div>
     <div class="save-panel">
         <span style="font-size: 12px; color: var(--text-muted);">
-            現在画面で選ばれている「キャラ達のLv」を文字にして保存・復活できます。
+            現在登録されている「全キャラの所持状況とレベル」を暗号化コードにして保存・復元できます。
         </span>
         <div class="save-flex">
             <input type="text" id="save-data-code" class="save-input" readonly placeholder="ここに保存コードがでます">
