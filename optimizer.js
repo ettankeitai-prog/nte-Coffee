@@ -40,17 +40,21 @@ export function buildMenuStats(menuSet) {
 }
 
 /************************************************
- * 有効なスキルの取得
+ * 有効なスキルの取得 (Lv1〜Lv5、および none 除外対応)
  ************************************************/
 export function getActiveSkills(selectedCharacters, menuStats) {
     const activeSkills = [];
 
     for (const charInput of selectedCharacters) {
+        // 現在のキャラレベル以下のスキルをすべて抽出
         const charSkills = SKILLS.filter(
-            skill => skill.character === charInput.name && skill.slot <= charInput.unlocked
+            skill => skill.character === charInput.name && skill.level <= charInput.level
         );
 
         for (const skill of charSkills) {
+            // 【修正点】時給に関係のない "none" スキルは完全にスルー（除外）する
+            if (skill.type === "none") continue;
+
             if (evaluateCondition(skill.condition, menuStats)) {
                 activeSkills.push(skill);
             }
@@ -67,18 +71,17 @@ export function calculateRevenue(menuSet, selectedCharacters, activeMaterialBuff
     const activeSkills = getActiveSkills(selectedCharacters, menuStats);
 
     let fixedPriceBonus = 0;
-    let revenuePercent = 0; // キャラによる全体の割合バフ合計
+    let revenuePercent = 0; 
     let customerPercent = 0;
     let customerFlat = 0;
 
-    // スキル効果を分類・合算
     for (const skill of activeSkills) {
         switch (skill.type) {
             case "fixed_price":
                 fixedPriceBonus += Number(skill.value);
                 break;
             case "revenue_percent":
-                revenuePercent += Number(skill.value); // 全製品にかかる倍率として合算
+                revenuePercent += Number(skill.value);
                 break;
             case "customer_percent":
                 customerPercent += Number(skill.value);
@@ -89,11 +92,10 @@ export function calculateRevenue(menuSet, selectedCharacters, activeMaterialBuff
         }
     }
 
-    // 集客倍率の計算（実測値ズレ補正込み）
     const rawCustomers = BASE_CUSTOMERS * (1 + customerPercent) + customerFlat;
     let finalCustomers = Math.round(rawCustomers);
     if (customerPercent > 0 || customerFlat > 0) {
-        finalCustomers += 1; // 2505 → 2506 への実測補正
+        finalCustomers += 1; 
     }
     const customerMultiplier = finalCustomers / BASE_CUSTOMERS;
 
@@ -103,7 +105,6 @@ export function calculateRevenue(menuSet, selectedCharacters, activeMaterialBuff
     for (const menu of menuSet) {
         let materialBonus = 0;
 
-        // 【仕様通り】特定の原材料が含まれているメニューのみ +0.75
         const hasBuffMaterial = (menu.materials || []).some(
             material => activeMaterialBuffs.includes(material)
         );
@@ -111,19 +112,11 @@ export function calculateRevenue(menuSet, selectedCharacters, activeMaterialBuff
             materialBonus += 0.75;
         }
 
-        // 1. 最終単価の算出（基礎単価 ＋ 固定バフ ＋ 対象なら原材料バフ）
         const finalPrice = menu.price + fixedPriceBonus + materialBonus;
-
-        // 2. 商品表示値（基礎）にする
         let itemRevenue = finalPrice * 24;
-
-        // 3. 【仕様通り】割合バフ（レクイエム等）を「全製品」に適用
         itemRevenue *= (1 + revenuePercent);
-
-        // 4. 集客補正の反映
         itemRevenue *= customerMultiplier;
 
-        // メニューごとの時給を小数点第2位で丸める
         itemRevenue = Math.round(itemRevenue * 100) / 100;
         totalRevenue += itemRevenue;
 

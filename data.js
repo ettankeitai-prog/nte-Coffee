@@ -22,46 +22,91 @@ export const MENUS = [
     { name: "キャラメルココフィー", price: 18.00, type: "dessert", materials: ["小麦粉", "生クリーム", "「砂糖or塩」海塩", "ココアパウダー"] }
 ];
 
-// キャラクタースキルのマスターデータ
-// slotは能力1〜3に対応。conditionで発動条件を指定できるようにしました。
+// キャラクタースキルのマスターデータ (Lv1〜Lv5対応版)
+// 時給に関係のないスキルは type: "none" としています。
 export const SKILLS = [
     // ミント
-    { character: "ミント", slot: 1, type: "fixed_price", value: 0.12, condition: "" },
-    { character: "ミント", slot: 2, type: "fixed_price", value: 0.18, condition: "" },
+    { character: "ミント", level: 1, type: "fixed_price", value: 0.12, condition: "" },
+    { character: "ミント", level: 2, type: "none", value: 0, condition: "" },
+    { character: "ミント", level: 3, type: "none", value: 0, condition: "" },
+    { character: "ミント", level: 4, type: "none", value: 0, condition: "" },
+    { character: "ミント", level: 5, type: "fixed_price", value: 0.18, condition: "" },
+
     // ハニア
-    { character: "ハニア", slot: 1, type: "fixed_price", value: 0.12, condition: "" },
-    { character: "ハニア", slot: 2, type: "fixed_price", value: 0.12, condition: "" },
-    { character: "ハニア", slot: 3, type: "fixed_price", value: 0.18, condition: "" },
-    // ナナリ
-    { character: "ナナリ", slot: 1, type: "fixed_price", value: 0.20, condition: "main>=1" },
-    { character: "ナナリ", slot: 2, type: "fixed_price", value: 0.30, condition: "main>=2" },
+    { character: "ハニア", level: 1, type: "fixed_price", value: 0.12, condition: "" },
+    { character: "ハニア", level: 2, type: "none", value: 0, condition: "" },
+    { character: "ハニア", level: 3, type: "fixed_price", value: 0.12, condition: "" },
+    { character: "ハニア", level: 4, type: "none", value: 0, condition: "" },
+    { character: "ハニア", level: 5, type: "fixed_price", value: 0.18, condition: "" },
+
+    // ナナリ（ご提示の例：Lv1とLv5のみ時給に関係あり）
+    { character: "ナナリ", level: 1, type: "fixed_price", value: 0.20, condition: "main>=1" },
+    { character: "ナナリ", level: 2, type: "none", value: 0, condition: "" },
+    { character: "ナナリ", level: 3, type: "none", value: 0, condition: "" },
+    { character: "ナナリ", level: 4, type: "none", value: 0, condition: "" },
+    { character: "ナナリ", level: 5, type: "fixed_price", value: 0.30, condition: "main>=2" },
+
     // エドガー
-    { character: "エドガー", slot: 1, type: "customer_flat", value: 18, condition: "" },
-    { character: "エドガー", slot: 2, type: "customer_flat", value: 18, condition: "" },
-    { character: "エドガー", slot: 3, type: "customer_flat", value: 27, condition: "" },
+    { character: "エドガー", level: 1, type: "customer_flat", value: 18, condition: "" },
+    { character: "エドガー", level: 2, type: "none", value: 0, condition: "" },
+    { character: "エドガー", level: 3, type: "customer_flat", value: 18, condition: "" },
+    { character: "エドガー", level: 4, type: "none", value: 0, condition: "" },
+    { character: "エドガー", level: 5, type: "customer_flat", value: 27, condition: "" },
+
     // アドレー
-    { character: "アドレー", slot: 1, type: "fixed_price", value: 0.12, condition: "" },
-    { character: "アドレー", slot: 2, type: "fixed_price", value: 0.18, condition: "" },
+    { character: "アドレー", level: 1, type: "fixed_price", value: 0.12, condition: "" },
+    { character: "アドレー", level: 2, type: "none", value: 0, condition: "" },
+    { character: "アドレー", level: 3, type: "none", value: 0, condition: "" },
+    { character: "アドレー", level: 4, type: "none", value: 0, condition: "" },
+    { character: "アドレー", level: 5, type: "fixed_price", value: 0.18, condition: "" },
+
     // 翳
-    { character: "翳", slot: 1, type: "customer_flat", value: 18, condition: "" },
-    { character: "翳", slot: 2, type: "customer_flat", value: 27, condition: "" },
+    { character: "翳", level: 1, type: "customer_flat", value: 18, condition: "" },
+    { character: "翳", level: 2, type: "none", value: 0, condition: "" },
+    { character: "翳", level: 3, type: "none", value: 0, condition: "" },
+    { character: "翳", level: 4, type: "none", value: 0, condition: "" },
+    { character: "翳", level: 5, type: "customer_flat", value: 27, condition: "" },
+
     // ダフォディール
-    { character: "ダフォディール", slot: 1, type: "customer_flat", value: 18, condition: "" },
-    { character: "ダフォディール", slot: 2, type: "customer_flat", value: 27, condition: "" },
+    { character: "ダフォディール", level: 1, type: "customer_flat", value: 18, condition: "" },
+    { character: "ダフォディール", level: 2, type: "none", value: 0, condition: "" },
+    { character: "ダフォディール", level: 3, type: "none", value: 0, condition: "" },
+    { character: "ダフォディール", level: 4, type: "none", value: 0, condition: "" },
+    { character: "ダフォディール", level: 5, type: "customer_flat", value: 27, condition: "" },
+
     // 海月
-    { character: "海月", slot: 1, type: "fixed_price", value: 0.12, condition: "" },
-    { character: "海月", slot: 2, type: "customer_percent", value: 0.01, condition: "drink>=2" },
-    { character: "海月", slot: 3, type: "customer_percent", value: 0.015, condition: "drink>=2" },
+    { character: "海月", level: 1, type: "fixed_price", value: 0.12, condition: "" },
+    { character: "海月", level: 2, type: "customer_percent", value: 0.01, condition: "drink>=2" },
+    { character: "海月", level: 3, type: "none", value: 0, condition: "" },
+    { character: "海月", level: 4, type: "none", value: 0, condition: "" },
+    { character: "海月", level: 5, type: "customer_percent", value: 0.015, condition: "drink>=2" },
+
     // ちぃちゃん
-    { character: "ちぃちゃん", slot: 1, type: "customer_flat", value: 18, condition: "" },
-    { character: "ちぃちゃん", slot: 2, type: "customer_flat", value: 27, condition: "" },
+    { character: "ちぃちゃん", level: 1, type: "customer_flat", value: 18, condition: "" },
+    { character: "ちぃちゃん", level: 2, type: "none", value: 0, condition: "" },
+    { character: "ちぃちゃん", level: 3, type: "none", value: 0, condition: "" },
+    { character: "ちぃちゃん", level: 4, type: "none", value: 0, condition: "" },
+    { character: "ちぃちゃん", level: 5, type: "customer_flat", value: 27, condition: "" },
+
     // 早霧
-    { character: "早霧", slot: 1, type: "fixed_price", value: 0.12, condition: "" },
-    { character: "早霧", slot: 2, type: "fixed_price", value: 0.30, condition: "sameTag>=3" },
+    { character: "早霧", level: 1, type: "fixed_price", value: 0.12, condition: "" },
+    { character: "早霧", level: 2, type: "none", value: 0, condition: "" },
+    { character: "早霧", level: 3, type: "none", value: 0, condition: "" },
+    { character: "早霧", level: 4, type: "none", value: 0, condition: "" },
+    { character: "早霧", level: 5, type: "fixed_price", value: 0.30, condition: "sameTag>=3" },
+
     // 白蔵
-    { character: "白蔵", slot: 1, type: "customer_flat", value: 18, condition: "" },
-    { character: "白蔵", slot: 2, type: "customer_flat", value: 27, condition: "" },
-// レクイエム（※条件を満たせば全製品にかかるように targetType を削除）
-    { character: "レクイエム", slot: 1, type: "revenue_percent", value: 0.01, condition: "dessert>=1" },
-    { character: "レクイエム", slot: 2, type: "revenue_percent", value: 0.015, condition: "dessert>=2" }
+    { character: "白蔵", level: 1, type: "customer_flat", value: 18, condition: "" },
+    { character: "白蔵", level: 2, type: "none", value: 0, condition: "" },
+    { character: "白蔵", level: 3, type: "none", value: 0, condition: "" },
+    { character: "白蔵", level: 4, type: "none", value: 0, condition: "" },
+    { character: "白蔵", level: 5, type: "customer_flat", value: 27, condition: "" },
+
+    // レクイエム
+    { character: "レクイエム", level: 1, type: "revenue_percent", value: 0.01, condition: "dessert>=1" },
+    { character: "レクイエム", level: 2, type: "none", value: 0, condition: "" },
+    { character: "レクイエム", level: 3, type: "none", value: 0, condition: "" },
+    { character: "レクイエム", level: 4, type: "none", value: 0, condition: "" },
+    { character: "レクイエム", level: 5, type: "revenue_percent", value: 0.015, condition: "dessert>=2" },
+
 ];
