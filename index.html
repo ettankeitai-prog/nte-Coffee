@@ -2,30 +2,199 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Cafe Optimizer</title>
-    <link rel="stylesheet" href="./css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>店舗売上・最適化計算機</title>
+    <style>
+        :root {
+            --bg-color: #1a1c23;
+            --panel-bg: #242835;
+            --accent-color: #ffb703;
+            --text-color: #f8f9fa;
+            --text-muted: #98a6ad;
+            --border-color: #3b4256;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: var(--accent-color);
+            font-size: 24px;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--accent-color);
+            padding-left: 8px;
+            color: #fff;
+        }
+        /* グリッドレイアウト */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            margin-bottom: 25px;
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        /* 特殊対応：キャラクターは10枠なので2列になる */
+        .char-grid {
+            grid-template-columns: repeat(5, 1fr);
+        }
+        .slot {
+            background: rgba(0, 0, 0, 0.2);
+            border: 2px dashed var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        select {
+            width: 100%;
+            background: #2d3243;
+            color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 6px;
+            font-size: 12px;
+            margin-bottom: 5px;
+            outline: none;
+        }
+        select:focus {
+            border-color: var(--accent-color);
+        }
+        .unlocked-container {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .unlocked-input {
+            width: 40px;
+            background: #2d3243;
+            color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 2px 4px;
+            text-align: center;
+        }
+        /* 原材料バフ用エリア */
+        .material-panel {
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 25px;
+        }
+        .material-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .material-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #2d3243;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .material-label:hover {
+            border-color: var(--accent-color);
+        }
+        .material-label input {
+            cursor: pointer;
+        }
+        /* 結果表示エリア */
+        .result-panel {
+            background: #2d3243;
+            border: 2px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 25px;
+        }
+        .total-revenue {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--accent-color);
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .total-revenue span {
+            font-size: 16px;
+            color: var(--text-color);
+            margin-left: 5px;
+        }
+        .item-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+        }
+        .item-card {
+            background: var(--panel-bg);
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #4a5568;
+            font-size: 13px;
+        }
+        /* 属性ごとのカード色分け */
+        .item-card.drink { border-left-color: #0ea5e9; }
+        .item-card.dessert { border-left-color: #ec4899; }
+        .item-card.main { border-left-color: #eab308; }
+        
+        .item-card-name { font-weight: bold; margin-bottom: 4px; }
+        .item-card-rev { color: #10b981; text-align: right; font-weight: bold; }
+    </style>
 </head>
-
 <body>
 
-<h1>Cafe Optimizer</h1>
+<div class="container">
+    <h1>SHOP STOPWATCH OPTIMIZER</h1>
 
-<h2>材料バフ</h2>
-<div id="materialArea"></div>
+    <div class="section-title">従業員スロット (最大10名)</div>
+    <div class="grid-container char-grid" id="char-slots">
+        </div>
 
-<h2>キャラ解放</h2>
-<div id="characterArea"></div>
+    <div class="section-title">メニュー設定 (5品)</div>
+    <div class="grid-container" id="menu-slots">
+        </div>
 
-<button id="optimizeBtn">
-    最適編成を計算
-</button>
+    <div class="section-title">発動中の原材料バフ</div>
+    <div class="material-panel">
+        <div class="material-tags" id="material-box">
+            </div>
+    </div>
 
-<hr>
+    <div class="result-panel">
+        <div class="section-title" style="border-left-color: #10b981;">計算結果 (予測時給)</div>
+        <div class="total-revenue" id="total-revenue">0.00<span>/h</span></div>
+        <div class="item-list" id="item-breakdown">
+            </div>
+    </div>
+</div>
 
-<h2>結果</h2>
-<div id="result"></div>
-
-<script type="module" src="./js/app.js"></script>
-
+<script type="module" src="./main.js"></script>
 </body>
 </html>
