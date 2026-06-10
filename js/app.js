@@ -7,9 +7,6 @@ import {
 
 async function init() {
 
-    // =========================
-    // CSVロード
-    // =========================
     const menusRaw =
         await loadCsv("./csv/menus.csv");
 
@@ -19,29 +16,23 @@ async function init() {
     const skillsRaw =
         await loadCsv("./csv/skills.csv");
 
-    // =========================
-    // パース（重要）
-    // =========================
-
     const menus = parseMenus(menusRaw);
     const characters = parseCharacters(charsRaw);
     const skills = parseSkills(skillsRaw);
 
-    // =========================
-    // UIダミー（後で差し替え）
-    // =========================
+    // ⭐ ここ重要（DOM保証）
+    if (document.readyState === "loading") {
+        await new Promise(resolve =>
+            document.addEventListener("DOMContentLoaded", resolve)
+        );
+    }
 
-    const activeMaterials = []; // ← UIで後から入れる
+    renderMaterials(menus);
+    renderCharacters(characters);
 
-    console.log("Loaded:", {
-        menus,
-        characters,
-        skills
-    });
+    console.log("Loaded:", { menus, characters, skills });
 
-    // =========================
-    // 最適化実行
-    // =========================
+    const activeMaterials = [];
 
     const results =
         findBestBuild(
@@ -52,24 +43,13 @@ async function init() {
             10
         );
 
-    // =========================
-    // 表示
-    // =========================
-
     console.log("=== TOP RESULTS ===");
 
     results.forEach((r, i) => {
 
-        const formatted =
-            formatBuild(r);
-
-        console.log(
-            `#${i + 1}`,
-            formatted
-        );
+        console.log(`#${i + 1}`, formatBuild(r));
     });
 }
-
 
 /************************************************
  * CSVパース群
@@ -116,3 +96,57 @@ function parseSkills(rows) {
  ************************************************/
 
 init();
+
+/************************************************
+ * UI生成Materials
+ ************************************************/
+function renderMaterials(menus) {
+
+    const materials =
+        new Set(
+            menus.flatMap(m => m.materials)
+        );
+
+    const area =
+        document.getElementById("materialArea");
+
+    area.innerHTML = "";
+
+    materials.forEach(mat => {
+
+        const label = document.createElement("label");
+
+        label.innerHTML = `
+            <input type="checkbox" value="${mat}">
+            ${mat}
+        `;
+
+        area.appendChild(label);
+    });
+}
+/************************************************
+ * UI生成Characters
+ ************************************************/
+function renderCharacters(chars) {
+
+    const area =
+        document.getElementById("characterArea");
+
+    area.innerHTML = "";
+
+    chars.forEach(c => {
+
+        const div = document.createElement("div");
+
+        div.innerHTML = `
+            ${c.name}
+            <input type="number"
+                min="0"
+                max="3"
+                value="3"
+                data-name="${c.name}">
+        `;
+
+        area.appendChild(div);
+    });
+}
