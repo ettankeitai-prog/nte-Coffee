@@ -16,6 +16,7 @@ const btnImport = document.getElementById('btn-import');
 const saveDataCodeInput = document.getElementById('save-data-code');
 
 const charNames = [...new Set(SKILLS.map(s => s.character))];
+const LOCAL_STORAGE_KEY = 'cafe_optimizer_roster_data';
 
 // --- 画面初期化処理 ---
 
@@ -71,14 +72,13 @@ if (window.BUFF_GROUPS || BUFF_GROUPS) {
     targetGroups.forEach(g => {
         const label = document.createElement('label');
         label.className = 'material-label';
-        // 表示用にグループ名と加算値をだす (例: 果物 (+0.75))
         label.innerHTML = `<input type="checkbox" value="${g.name}"> ${g.name} (+${g.add})`;
         label.querySelector('input').addEventListener('change', runCalculation);
         materialBox.appendChild(label);
     });
 }
 
-// 4. 全キャラクター所持・育成状況の一覧
+// 4. 全キャラクター所持・育成状況の一覧生成
 charNames.forEach(name => {
     const card = document.createElement('div');
     card.className = 'roster-item owned';
@@ -97,16 +97,70 @@ charNames.forEach(name => {
     `;
 
     const checkbox = card.querySelector('.roster-own');
+    const levelSelect = card.querySelector('.roster-level');
+
+    // チェック状態が変わったとき
     checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
             card.classList.add('owned');
         } else {
             card.classList.remove('owned');
         }
+        saveToLocalStorage(); // ★自動保存
+    });
+
+    // レベルが変更されたとき
+    levelSelect.addEventListener('change', () => {
+        saveToLocalStorage(); // ★自動保存
     });
 
     rosterBox.appendChild(card);
 });
+
+
+// --- ★新設：LocalStorage への保存・読込処理 ---
+function saveToLocalStorage() {
+    const rosterItems = rosterBox.querySelectorAll('.roster-item');
+    const saveData = {};
+
+    rosterItems.forEach(item => {
+        const name = item.querySelector('span').innerText;
+        const isOwned = item.querySelector('.roster-own').checked;
+        const level = item.querySelector('.roster-level').value;
+        saveData[name] = { isOwned, level };
+    });
+
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(saveData));
+}
+
+function loadFromLocalStorage() {
+    const rawData = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!rawData) return; // キャッシュがなければ何もしない
+
+    try {
+        const saveData = JSON.parse(rawData);
+        const rosterItems = rosterBox.querySelectorAll('.roster-item');
+
+        rosterItems.forEach(item => {
+            const name = item.querySelector('span').innerText;
+            if (saveData[name]) {
+                const checkEl = item.querySelector('.roster-own');
+                const levelEl = item.querySelector('.roster-level');
+                
+                checkEl.checked = saveData[name].isOwned;
+                levelEl.value = saveData[name].level;
+
+                if (checkEl.checked) {
+                    item.classList.add('owned');
+                } else {
+                    item.classList.remove('owned');
+                }
+            }
+        });
+    } catch (e) {
+        console.error("LocalStorageからの読込に失敗しました", e);
+    }
+}
 
 
 // --- リアルタイム売上計算処理 ---
@@ -208,7 +262,7 @@ btnOptimize.addEventListener('click', () => {
     alert(`最強編成の自動セットが完了しました！\n最高予測時給: ${best.revenue.toFixed(2)}/h`);
 });
 
-// --- ② セーブ（エクスポート用コード作成） ---
+// --- ② 手動エクスポートコード作成 ---
 btnExport.addEventListener('click', () => {
     const rosterItems = rosterBox.querySelectorAll('.roster-item');
     const statusArray = [];
@@ -223,10 +277,10 @@ btnExport.addEventListener('click', () => {
     const code = btoa(encodeURIComponent(statusArray.join(',')));
     saveDataCodeInput.value = code;
     saveDataCodeInput.select();
-    alert("あなたのキャラクター所持状況をコード化しました！メモ帳などに保存してください。");
+    alert("手持ち状況をコード化しました！バックアップとしてメモ帳などに保存してください。");
 });
 
-// --- ② ロード（インポートコード読込） ---
+// --- ③ 手動コードからの読込適用（読込時もLocalStorageを自動更新） ---
 btnImport.addEventListener('click', () => {
     const code = prompt("保存したコードをここに貼り付けてください：");
     if (!code) return;
@@ -255,11 +309,14 @@ btnImport.addEventListener('click', () => {
             });
         });
 
+        saveToLocalStorage(); // コード読込時にもブラウザキャッシュを即座に更新！
         runCalculation();
-        alert("全キャラクターの所持・レベル状況を完璧に復元しました！");
+        alert("コードから手持ち状況を復元し、ブラウザにも保存しました！");
     } catch (e) {
         alert("正しい保存コードではありません。");
     }
 });
 
-runCalculation();
+// --- アプリ起動時の最終処理 ---
+loadFromLocalStorage(); // 1. まずブラウザから過去のデータを自動復元
+runCalculation();       // 2. 初期計算の実行
