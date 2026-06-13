@@ -160,15 +160,18 @@
             font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
-            margin-bottom: 25px;
+            margin-bottom: 15px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            transition: background 0.2s;
+            transition: background 0.2s, opacity 0.2s;
         }
         .btn-optimize:hover {
-            background: #059669;
+            opacity: 0.9;
+        }
+        .btn-optimize:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
         }
         
-        /* 全キャラ管理リスト用の新スタイル */
         .roster-panel {
             background: var(--panel-bg);
             padding: 15px;
@@ -247,7 +250,7 @@
     <div class="section-title">店舗配置 - メニュー設定 (5品)</div>
     <div class="grid-container" id="menu-slots" style="grid-template-columns: repeat(5, 1fr);"></div>
 
-    <div class="section-title">発動中の原材料バフ</div>
+    <div class="section-title">本日の日次バフ (自動加算)</div>
     <div class="material-panel">
         <div class="material-tags" id="material-box"></div>
     </div>
@@ -260,13 +263,15 @@
 
     <button class="btn-optimize" id="btn-optimize">⚡ 所持状況から最強の配置を自動計算する</button>
 
-    <div class="section-title">全キャラクター所持・育成管理 (最適化の計算元になります)</div>
+    <button class="btn-optimize" id="btn-recommend" style="background: #8b5cf6; margin-bottom: 25px;">💡 次に育成すべき「おすすめキャラTOP3」を診断する</button>
+
+    <div class="section-title">全キャラクター所持・育成管理 (最適化・診断の計算元になります)</div>
     <div class="roster-panel" id="roster-box"></div>
 
-    <div class="section-title">データの保存と読込 (インポート / エクスポート)</div>
+    <div class="section-title">データの保存と読込 (自動保存対応)</div>
     <div class="save-panel">
         <span style="font-size: 12px; color: var(--text-muted);">
-            現在登録されている「全キャラの所持状況とレベル」を暗号化コードにして保存・復元できます。
+            画面を閉じても手持ちは自動で保存されます。手動でバックアップを取りたい場合はコードを作成してください。
         </span>
         <div class="save-flex">
             <input type="text" id="save-data-code" class="save-input" readonly placeholder="ここに保存コードがでます">
