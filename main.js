@@ -11,7 +11,7 @@ const totalRevenueEl = document.getElementById('total-revenue');
 const itemBreakdownEl = document.getElementById('item-breakdown');
 
 const btnOptimize = document.getElementById('btn-optimize');
-const btnRecommend = document.getElementById('btn-recommend');
+const btnRecommend = document.getElementById('btn-recommend'); // 追加
 const btnExport = document.getElementById('btn-export');
 const btnImport = document.getElementById('btn-import');
 const saveDataCodeInput = document.getElementById('save-data-code');
@@ -69,6 +69,7 @@ charNames.forEach(name => {
             <option value="1">Lv 1</option><option value="2">Lv 2</option><option value="3">Lv 3</option><option value="4">Lv 4</option><option value="5" selected>Lv 5</option>
         </select>
     `;
+
     const checkbox = card.querySelector('.roster-own');
     const levelSelect = card.querySelector('.roster-level');
     checkbox.addEventListener('change', () => {
@@ -117,11 +118,13 @@ function runCalculation() {
         const level = parseInt(slot.querySelector('.char-level').value) || 5;
         if (name) selectedCharacters.push({ name, level });
     });
+
     const selectedMenus = [];
     menuSlotsContainer.querySelectorAll('.menu-select').forEach(select => {
         const menuData = MENUS.find(m => m.name === select.value);
         if (menuData) selectedMenus.push(menuData);
     });
+
     const activeBuffGroupNames = [];
     materialBox.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => activeBuffGroupNames.push(cb.value));
 
@@ -130,6 +133,7 @@ function runCalculation() {
         itemBreakdownEl.innerHTML = '';
         return;
     }
+
     const result = calculateRevenue(selectedMenus, selectedCharacters, activeBuffGroupNames);
     totalRevenueEl.innerHTML = `${result.revenue.toFixed(2)}<span>/h</span>`;
     itemBreakdownEl.innerHTML = result.itemResults.map(item => {
@@ -175,13 +179,13 @@ btnOptimize.addEventListener('click', () => {
             charSlotsElements[index].querySelector('.char-level').value = char.level;
         }
     });
+
     runCalculation();
     alert(`最強編成の自動セットが完了しました！\n最高予測時給: ${best.revenue.toFixed(2)}/h`);
 });
 
-
-// --- ★新設：育成おすすめキャラ診断 (非同期・段階レベルアップ評価版) ---
-btnRecommend.addEventListener('click', async () => {
+// --- ★新設：育成おすすめキャラ診断 ---
+btnRecommend.addEventListener('click', () => {
     const ownedCharacters = [];
     rosterBox.querySelectorAll('.roster-item').forEach(item => {
         if (item.querySelector('.roster-own').checked) {
@@ -202,94 +206,68 @@ btnRecommend.addEventListener('click', async () => {
     const activeBuffGroupNames = [];
     materialBox.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => activeBuffGroupNames.push(cb.value));
 
+    // 計算に数秒かかるため、ボタンの見た目を変えてUIが固まった不安をなくす
     const originalText = btnRecommend.innerText;
+    btnRecommend.innerText = "⏳ 膨大な組み合わせから育成ポテンシャルを計算中... (数十秒かかる場合があります)";
     btnRecommend.disabled = true;
     btnRecommend.style.background = "#6b7280";
 
-    try {
-        btnRecommend.innerText = "⏳ ベース時給を計算中...";
-        await new Promise(r => setTimeout(r, 10)); // UIスレッド解放用
-        
-        const baseResult = findBestBuildFast(MENUS, ownedCharacters, activeBuffGroupNames);
-        const baseRevenue = baseResult.revenue;
+    // ブラウザの描画を更新させるためにsetTimeoutで処理を遅延させる
+    setTimeout(() => {
+        try {
+            // 現在の育成状況での最高時給（ベースライン）
+            const baseResult = findBestBuildFast(MENUS, ownedCharacters, activeBuffGroupNames);
+            const baseRevenue = baseResult.revenue;
 
-        // 全候補キャラの「現在のレベルより上で評価すべきレベル」をリストアップ
-        const tasks = [];
-        for (const candidate of candidates) {
-            for (let targetLv = candidate.level + 1; targetLv <= 5; targetLv++) {
-                tasks.push({ name: candidate.name, targetLevel: targetLv });
-            }
-        }
+            const recommendations = [];
 
-        // 結果を格納するオブジェクト
-        const resultsByChar = {};
-        candidates.forEach(c => {
-            resultsByChar[c.name] = { currentLevel: c.level, maxIncrease: 0, steps: [] };
-        });
-
-        let completed = 0;
-        
-        // --- 疑似非同期によるプログレスバー処理 ---
-        for (const task of tasks) {
-            btnRecommend.innerText = `⏳ ポテンシャルを計算中... (${completed + 1}/${tasks.length})`;
-            await new Promise(r => setTimeout(r, 0)); // ブラウザがフリーズしない魔法の1行
-
-            // 該当キャラのレベルを仮定のものに差し替える
-            const simCharacters = ownedCharacters.map(c => 
-                c.name === task.name ? { name: c.name, level: task.targetLevel } : c
-            );
-
-            const simResult = findBestBuildFast(MENUS, simCharacters, activeBuffGroupNames);
-            const increase = simResult.revenue - baseRevenue;
-
-            // 時給が前のレベルよりも明確に増加する（意味のあるスキル解放）場合のみ記録
-            if (increase > 0.01) {
-                // 同じキャラのこれまでのステップの中で、すでに同じ増加量が出ていないかチェック
-                // （例えばLv2→Lv3でバフが変わらない場合、重複して表示するのを防ぐ）
-                const isDuplicateIncrease = resultsByChar[task.name].steps.some(step => Math.abs(step.increase - increase) < 0.1);
-                
-                if (!isDuplicateIncrease) {
-                    resultsByChar[task.name].steps.push({ level: task.targetLevel, increase: increase });
-                    if (increase > resultsByChar[task.name].maxIncrease) {
-                        resultsByChar[task.name].maxIncrease = increase;
+            // 各候補キャラについて「仮にこの子だけLv5になったら」をシミュレーション
+            for (const candidate of candidates) {
+                const simCharacters = ownedCharacters.map(c => {
+                    if (c.name === candidate.name) {
+                        return { name: c.name, level: 5 }; // Lv5のポテンシャルを測る
                     }
+                    return c;
+                });
+
+                const simResult = findBestBuildFast(MENUS, simCharacters, activeBuffGroupNames);
+                const increase = simResult.revenue - baseRevenue;
+
+                // 時給が1円以上伸びるならリストに入れる
+                if (increase > 0) {
+                    recommendations.push({
+                        name: candidate.name,
+                        increase: increase
+                    });
                 }
             }
-            completed++;
-        }
 
-        // 「意味のあるレベルアップ（maxIncrease > 0）」があったキャラだけを抽出し、最大増加量でソート
-        const recommendations = Object.keys(resultsByChar)
-            .map(name => ({ name, ...resultsByChar[name] }))
-            .filter(c => c.maxIncrease > 0)
-            .sort((a, b) => b.maxIncrease - a.maxIncrease);
+            // 伸び幅が大きい順にソート
+            recommendations.sort((a, b) => b.increase - a.increase);
 
-        if (recommendations.length === 0) {
-            alert("現在の編成と日次バフ状況では、残りのキャラのレベルを上げても時給は増加しないようです。");
-        } else {
-            // TOP3を選出
-            const top3 = recommendations.slice(0, 3);
-            let msg = "💡 次に育成すべきおすすめキャラクター TOP3 💡\n\n";
-            top3.forEach((rec, index) => {
-                msg += `第${index + 1}位: ${rec.name} (現在Lv${rec.currentLevel})\n`;
-                // ステップを昇順に並べ替えて表示
-                rec.steps.sort((a, b) => a.level - b.level).forEach(step => {
-                    msg += `▶ Lv ${step.level} に上げることで、時給が約 +${step.increase.toFixed(2)} /h 増加！\n`;
+            // アラートで結果を発表
+            if (recommendations.length === 0) {
+                alert("現在の編成と日次バフ状況では、残りのキャラのレベルを上げても時給は増加しないようです。");
+            } else {
+                const top3 = recommendations.slice(0, 3);
+                let msg = "💡 育成おすすめキャラクター TOP3 💡\n\n";
+                top3.forEach((rec, index) => {
+                    msg += `第${index + 1}位: ${rec.name}\n`;
+                    msg += `▶ レベルを 5 に上げることで、時給が約 +${rec.increase.toFixed(2)} /h 増加します！\n\n`;
                 });
-                msg += "\n";
-            });
-            msg += "※現在の日次バフと所持状況に基づいた最大ポテンシャルです。";
-            alert(msg);
+                msg += "※現在の日次バフと所持状況に基づいた最大ポテンシャルです。";
+                alert(msg);
+            }
+        } catch (e) {
+            alert("計算中にエラーが発生しました。");
+            console.error(e);
+        } finally {
+            // 処理が終わったらボタンを元に戻す
+            btnRecommend.innerText = originalText;
+            btnRecommend.disabled = false;
+            btnRecommend.style.background = "#8b5cf6";
         }
-
-    } catch (e) {
-        alert("計算中にエラーが発生しました。");
-        console.error(e);
-    } finally {
-        btnRecommend.innerText = originalText;
-        btnRecommend.disabled = false;
-        btnRecommend.style.background = "#8b5cf6";
-    }
+    }, 100);
 });
 
 // --- エクスポート / インポート ---
