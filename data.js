@@ -110,3 +110,11 @@ export const SKILLS = [
     { character: "レクイエム", level: 5, type: "revenue_percent", value: 0.015, condition: "dessert>=2" },
 
 ];
+
+// data.js の末尾にこれを追加（または admin.html から自動出力）
+export const BUFF_GROUPS = [
+    { name: "主食", group: "main", add: 1.0, items: [] },
+    { name: "ドリンク", group: "drink", add: 1.0, items: [] },
+    { name: "デザート", group: "dessert", add: 1.0, items: [] },
+    { name: "果物", group: "fruit", add: 0.75, items: ["みかん", "イチゴ", "リンゴ", "ココナッツ"] }
+];

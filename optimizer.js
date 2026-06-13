@@ -1,5 +1,5 @@
 // optimizer.js
-import { MENUS, SKILLS } from './data.js';
+import { MENUS, SKILLS, BUFF_GROUPS } from './data.js';
 
 export const BASE_CUSTOMERS = 2400;
 export const MENU_LIMIT = 5;
@@ -43,7 +43,7 @@ export function getActiveSkills(selectedCharacters, menuStats) {
     return activeSkills;
 }
 
-export function calculateRevenue(menuSet, selectedCharacters, activeMaterialBuffs) {
+export function calculateRevenue(menuSet, selectedCharacters, activeBuffGroupNames) {
     const menuStats = buildMenuStats(menuSet);
     const activeSkills = getActiveSkills(selectedCharacters, menuStats);
 
@@ -71,16 +71,31 @@ export function calculateRevenue(menuSet, selectedCharacters, activeMaterialBuff
     let totalRevenue = 0;
     const itemResults = [];
 
+    // 有効化されているバフグループのデータ配列を取得
+    const currentActiveGroups = (BUFF_GROUPS || []).filter(g => activeBuffGroupNames.includes(g.name));
+
     for (const menu of menuSet) {
-        let materialBonus = 0;
-        const hasBuffMaterial = (menu.materials || []).some(
-            material => activeMaterialBuffs.includes(material)
-        );
-        if (hasBuffMaterial) {
-            materialBonus += 0.75;
+        let dynamicBuffBonus = 0;
+
+        // 各メニューに対して、発動中の日次バフをループ判定
+        for (const groupDef of currentActiveGroups) {
+            if (groupDef.group === "main" || groupDef.group === "drink" || groupDef.group === "dessert") {
+                // 大項目の判定
+                if (menu.type === groupDef.group) {
+                    dynamicBuffBonus += groupDef.add;
+                }
+            } else {
+                // 特殊グループ（果物など）の判定：商品名そのもの、または材料リストに含まれているか
+                const hasMatch = (groupDef.items || []).some(targetItem => 
+                    menu.name.includes(targetItem) || (menu.materials || []).includes(targetItem)
+                );
+                if (hasMatch) {
+                    dynamicBuffBonus += groupDef.add;
+                }
+            }
         }
 
-        const finalPrice = menu.price + fixedPriceBonus + materialBonus;
+        const finalPrice = menu.price + fixedPriceBonus + dynamicBuffBonus;
         let itemRevenue = finalPrice * 24;
         itemRevenue *= (1 + revenuePercent);
         itemRevenue *= customerMultiplier;
@@ -115,10 +130,7 @@ export function combinations(arr, k) {
     return result;
 }
 
-/************************************************
- * 所持キャラリストを元にした、爆速の最適化計算
- * ************************************************/
-export function findBestBuildFast(allMenus, ownedCharacters, activeMaterialBuffs) {
+export function findBestBuildFast(allMenus, ownedCharacters, activeBuffGroupNames) {
     const menuCombos = combinations(allMenus, 5);
     
     let maxRevenue = -1;
@@ -128,7 +140,6 @@ export function findBestBuildFast(allMenus, ownedCharacters, activeMaterialBuffs
     for (const menuSet of menuCombos) {
         const menuStats = buildMenuStats(menuSet);
         
-        // 所持しているキャラクター達の貢献度をスコア化
         const charScores = ownedCharacters.map(char => {
             const mockSkills = getActiveSkills([char], menuStats);
             let score = 0;
@@ -141,11 +152,10 @@ export function findBestBuildFast(allMenus, ownedCharacters, activeMaterialBuffs
             return { char, score };
         });
 
-        // 貢献スコアの高い上位10人を自動ピック
         charScores.sort((a, b) => b.score - a.score);
         const topChars = charScores.slice(0, 10).map(x => x.char);
 
-        const result = calculateRevenue(menuSet, topChars, activeMaterialBuffs);
+        const result = calculateRevenue(menuSet, topChars, activeBuffGroupNames);
         
         if (result.revenue > maxRevenue) {
             maxRevenue = result.revenue;

@@ -1,5 +1,5 @@
 // main.js
-import { MENUS, SKILLS } from './data.js';
+import { MENUS, SKILLS, BUFF_GROUPS } from './data.js';
 import { calculateRevenue, findBestBuildFast } from './optimizer.js';
 
 const charSlotsContainer = document.getElementById('char-slots');
@@ -16,7 +16,6 @@ const btnImport = document.getElementById('btn-import');
 const saveDataCodeInput = document.getElementById('save-data-code');
 
 const charNames = [...new Set(SKILLS.map(s => s.character))];
-const allMaterials = [...new Set(MENUS.flatMap(m => m.materials || []))];
 
 // --- 画面初期化処理 ---
 
@@ -66,19 +65,23 @@ for (let i = 0; i < 5; i++) {
     menuSlotsContainer.appendChild(slot);
 }
 
-// 3. 発動可能な原材料バフ一覧
-allMaterials.forEach(mat => {
-    const label = document.createElement('label');
-    label.className = 'material-label';
-    label.innerHTML = `<input type="checkbox" value="${mat}"> ${mat}`;
-    label.querySelector('input').addEventListener('change', runCalculation);
-    materialBox.appendChild(label);
-});
+// 3. 日次バフグループのチェックボックス自動生成
+if (window.BUFF_GROUPS || BUFF_GROUPS) {
+    const targetGroups = window.BUFF_GROUPS || BUFF_GROUPS;
+    targetGroups.forEach(g => {
+        const label = document.createElement('label');
+        label.className = 'material-label';
+        // 表示用にグループ名と加算値をだす (例: 果物 (+0.75))
+        label.innerHTML = `<input type="checkbox" value="${g.name}"> ${g.name} (+${g.add})`;
+        label.querySelector('input').addEventListener('change', runCalculation);
+        materialBox.appendChild(label);
+    });
+}
 
-// 4. ★新設★ 全キャラクター所持・育成状況の一覧
+// 4. 全キャラクター所持・育成状況の一覧
 charNames.forEach(name => {
     const card = document.createElement('div');
-    card.className = 'roster-item owned'; // デフォルトは所持チェックON
+    card.className = 'roster-item owned';
     card.innerHTML = `
         <div class="roster-header">
             <input type="checkbox" class="roster-own" checked>
@@ -93,7 +96,6 @@ charNames.forEach(name => {
         </select>
     `;
 
-    // チェックボックス切り替えで見た目のスタイルを変更
     const checkbox = card.querySelector('.roster-own');
     checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
@@ -129,10 +131,10 @@ function runCalculation() {
         }
     });
 
-    const activeMaterialBuffs = [];
+    const activeBuffGroupNames = [];
     const checkboxes = materialBox.querySelectorAll('input[type="checkbox"]:checked');
     checkboxes.forEach(cb => {
-        activeMaterialBuffs.push(cb.value);
+        activeBuffGroupNames.push(cb.value);
     });
 
     if (selectedMenus.length < 5) {
@@ -141,7 +143,7 @@ function runCalculation() {
         return;
     }
 
-    const result = calculateRevenue(selectedMenus, selectedCharacters, activeMaterialBuffs);
+    const result = calculateRevenue(selectedMenus, selectedCharacters, activeBuffGroupNames);
     totalRevenueEl.innerHTML = `${result.revenue.toFixed(2)}<span>/h</span>`;
 
     itemBreakdownEl.innerHTML = result.itemResults.map(item => {
@@ -158,7 +160,6 @@ function runCalculation() {
 
 // --- ① 最適配置の自動計算 ---
 btnOptimize.addEventListener('click', () => {
-    // 画面一番下の「管理パネル」で所持チェックがついているキャラだけをリスト化
     const ownedCharacters = [];
     const rosterItems = rosterBox.querySelectorAll('.roster-item');
     
@@ -177,28 +178,23 @@ btnOptimize.addEventListener('click', () => {
         return;
     }
 
-    // 発動中の原材料バフ
-    const activeMaterialBuffs = [];
+    const activeBuffGroupNames = [];
     const checkboxes = materialBox.querySelectorAll('input[type="checkbox"]:checked');
-    checkboxes.forEach(cb => activeMaterialBuffs.push(cb.value));
+    checkboxes.forEach(cb => activeBuffGroupNames.push(cb.value));
 
-    // 計算開始
-    const best = findBestBuildFast(MENUS, ownedCharacters, activeMaterialBuffs);
+    const best = findBestBuildFast(MENUS, ownedCharacters, activeBuffGroupNames);
 
-    // 1. 割り出された最強メニュー5品を上の配置スロットにセット
     const menuSelects = menuSlotsContainer.querySelectorAll('.menu-select');
     best.menus.forEach((menu, index) => {
         if (menuSelects[index]) menuSelects[index].value = menu.name;
     });
 
-    // 2. 上のキャラ配置スロットを一旦全員空にする
     const charSlotsElements = charSlotsContainer.querySelectorAll('.slot');
     charSlotsElements.forEach(slot => {
         slot.querySelector('.char-select').value = "";
         slot.querySelector('.char-level').value = "5";
     });
     
-    // 3. ピックされた最強の従業員（最大10人）を順番に上スロットへ配置
     best.characters.forEach((char, index) => {
         if (charSlotsElements[index]) {
             const selectEl = charSlotsElements[index].querySelector('.char-select');
@@ -208,14 +204,12 @@ btnOptimize.addEventListener('click', () => {
         }
     });
 
-    // 表示更新
     runCalculation();
     alert(`最強編成の自動セットが完了しました！\n最高予測時給: ${best.revenue.toFixed(2)}/h`);
 });
 
 // --- ② セーブ（エクスポート用コード作成） ---
 btnExport.addEventListener('click', () => {
-    // 全管理キャラの「所持状態(1か0):レベル」を一本の暗号文コードにする
     const rosterItems = rosterBox.querySelectorAll('.roster-item');
     const statusArray = [];
 
@@ -244,7 +238,6 @@ btnImport.addEventListener('click', () => {
         pairs.forEach(pair => {
             const [name, isOwned, level] = pair.split(':');
             
-            // 管理パネル内の該当キャラを探して状態を復元
             rosterItems.forEach(item => {
                 if (item.querySelector('span').innerText === name) {
                     const checkEl = item.querySelector('.roster-own');
