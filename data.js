@@ -116,5 +116,7 @@ export const BUFF_GROUPS = [
     { name: "主食", group: "main", add: 1.0, items: [] },
     { name: "ドリンク", group: "drink", add: 1.0, items: [] },
     { name: "デザート", group: "dessert", add: 1.0, items: [] },
-    { name: "果物", group: "fruit", add: 0.75, items: ["みかん", "イチゴ", "リンゴ", "ココナッツ"] }
+    { name: "果物", group: "fruit", add: 0.75, items: ["みかん", "イチゴ", "リンゴ", "ココナッツ"] },
+    { name: "小麦粉", group: "flour", add: 0.75, items: ["小麦粉"] },
+    { name: "「9℃」コーヒ豆", group: "CoffeeBeans", add: 0.75, items: ["「9℃」コーヒ豆"] }
 ];
