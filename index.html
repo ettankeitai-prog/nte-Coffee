@@ -164,13 +164,8 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
             transition: background 0.2s, opacity 0.2s;
         }
-        .btn-optimize:hover {
-            opacity: 0.9;
-        }
-        .btn-optimize:disabled {
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
+        .btn-optimize:hover { opacity: 0.9; }
+        .btn-optimize:disabled { cursor: not-allowed; opacity: 0.7; }
         
         .roster-panel {
             background: var(--panel-bg);
@@ -234,9 +229,7 @@
             cursor: pointer;
             font-size: 13px;
         }
-        .btn-save:hover {
-            background: #4b526d;
-        }
+        .btn-save:hover { background: #4b526d; }
     </style>
 </head>
 <body>
@@ -261,8 +254,13 @@
         <div class="item-list" id="item-breakdown"></div>
     </div>
 
-    <button class="btn-optimize" id="btn-optimize">⚡ 所持状況から最強の配置を自動計算する</button>
+    <!-- 最適配置の実行ボタン -->
+    <button class="btn-optimize" id="btn-optimize">⚡ 所持状況から最強の配置を自動計算する (高速・スマート版)</button>
 
+    <!-- ★新設★ 完全総当たりモード -->
+    <button class="btn-optimize" id="btn-brute-force" style="background: #ef4444; margin-bottom: 15px;">🔥 【完全総当たりモード】100%の精度で全組み合わせを計算する</button>
+
+    <!-- 育成おすすめ診断ボタン -->
     <button class="btn-optimize" id="btn-recommend" style="background: #8b5cf6; margin-bottom: 25px;">💡 次に育成すべき「おすすめキャラTOP3」を診断する</button>
 
     <div class="section-title">全キャラクター所持・育成管理 (最適化・診断の計算元になります)</div>
